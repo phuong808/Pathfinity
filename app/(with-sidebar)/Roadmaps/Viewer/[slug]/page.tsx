@@ -100,7 +100,7 @@ export default function RoadmapViewerPage() {
                     variant="ghost"
                     size="sm"
                     onClick={() => router.push('/Roadmaps')}
-                    className="text-gray-600 hover:text-gray-900"
+                    className="text-gray-600 hover:text-gray-900 bg-white/90 backdrop-blur-sm rounded-md px-4 py-2 hover:cursor-pointer"
                 >
                     <ArrowLeft className="h-4 w-4 mr-2" />
                     Back to Roadmaps

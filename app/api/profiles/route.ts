@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { headers } from 'next/headers'
 import { db } from "@/app/db"
 import { profile } from "@/app/db/schema"
 import { auth } from "@/lib/auth"
@@ -10,25 +11,32 @@ import { sql, eq } from "drizzle-orm"
  */
 export async function GET(req: NextRequest) {
   try {
-    const session = await auth.api.getSession({ headers: req.headers })
+  const session = await auth.api.getSession({ headers: await headers() })
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     const profiles = await db
-      .select()
+      .select({
+        id: profile.id,
+        userId: profile.userId,
+        career: profile.career,
+        college: profile.college,
+        interests: profile.interests,
+        skills: profile.skills,
+        roadmap: profile.roadmap,
+        createdAt: profile.createdAt,
+        updatedAt: profile.updatedAt,
+      })
       .from(profile)
       .where(eq(profile.userId, session.user.id))
       .orderBy(profile.createdAt)
 
     return NextResponse.json({ profiles }, { status: 200 })
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error fetching profiles:", error)
-    return NextResponse.json(
-      { error: "Failed to fetch profiles" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: "Failed to fetch profiles" }, { status: 500 })
   }
 }
 
@@ -55,7 +63,7 @@ async function findLowestAvailableId(): Promise<number> {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await auth.api.getSession({ headers: req.headers })
+  const session = await auth.api.getSession({ headers: await headers() })
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -109,12 +117,9 @@ export async function POST(req: NextRequest) {
         roadmapError: "Failed to generate roadmap"
       }, { status: 201 })
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error creating profile:", error)
-    return NextResponse.json(
-      { error: "Failed to create profile" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: "Failed to create profile" }, { status: 500 })
   }
 }
 
@@ -124,7 +129,7 @@ export async function POST(req: NextRequest) {
  */
 export async function DELETE(req: NextRequest) {
   try {
-    const session = await auth.api.getSession({ headers: req.headers })
+  const session = await auth.api.getSession({ headers: await headers() })
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -166,7 +171,7 @@ export async function DELETE(req: NextRequest) {
     await db.delete(profile).where(sql`${profile.id} = ${id}`)
 
     return NextResponse.json({ success: true }, { status: 200 })
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error deleting profile:", error)
     return NextResponse.json({ error: "Failed to delete profile" }, { status: 500 })
   }
