@@ -245,7 +245,7 @@ export function Conversation({ messages, status, className, onSubmit }: Props) {
                           <PathwayJsonActions
                             text={text}
                             messageRole={String(message.role)}
-                            onOpen={() => router.push("/SavedRoadmaps")}
+                            onOpen={() => router.push("/Roadmaps/Viewer/draft")}
                           />
                         </MessageContent>
                       </Message>

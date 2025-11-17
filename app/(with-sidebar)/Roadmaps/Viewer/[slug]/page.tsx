@@ -5,15 +5,16 @@ import { useEffect, useState } from "react"
 import { Button } from "@/app/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import CollegeRoadmap from "@/app/components/roadmap/college-roadmap"
+import { normalizePathwayData } from "@/lib/pathway-json"
 
 interface PathwayData {
     program_name: string
-    institution: string
-    total_credits: number
+    institution?: string
+    total_credits?: number
     years: any[]
 }
 
-export default function RoadmapCatalogDetailPage() {
+export default function RoadmapViewerPage() {
     const params = useParams()
     const router = useRouter()
     const slug = params.slug as string
@@ -22,62 +23,78 @@ export default function RoadmapCatalogDetailPage() {
     const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
-        const controller = new AbortController()
         let mounted = true
 
-        async function fetchPathwayData() {
+        async function load() {
             setLoading(true)
+            setError(null)
+
             try {
-                const res = await fetch('/api/pathways', { signal: controller.signal })
-                if (!res.ok) {
-                    const text = await res.text().catch(() => '')
-                    throw new Error(text || 'Failed to fetch pathways')
-                }
-
-                const pathways = await res.json()
-                const pathway = pathways.find((p: any) => {
-                    const pathwaySlug = p.programName
-                        .toLowerCase()
-                        .replace(/[^\w\s-]/g, '')
-                        .replace(/\s+/g, '-')
-                        .replace(/--+/g, '-')
-                        .trim()
-                    return pathwaySlug === slug
-                })
-
-                if (!pathway) {
+                // If slug === 'draft' try sessionStorage/localStorage draft handed from Chat
+                if (slug === 'draft') {
+                    let raw: string | null = null
+                    try {
+                        raw = sessionStorage.getItem('pathfinity.roadmapDraft')
+                    } catch {}
+                    if (!raw) {
+                        try {
+                            raw = localStorage.getItem('pathfinity.roadmapDraft')
+                        } catch {}
+                    }
+                    if (!raw) throw new Error('No draft found in local storage')
+                    const parsed = JSON.parse(raw)
+                    const normalized = normalizePathwayData(parsed)
+                    if (!normalized) throw new Error('Draft JSON is not a valid PathwayData')
                     if (!mounted) return
-                    setPathwayData(null)
-                    setError('Pathway not found')
+                    setPathwayData(normalized)
                     return
                 }
 
+                // Try public /roadmaps/{slug}.json first
+                try {
+                    const res = await fetch(`/roadmaps/${slug}.json`)
+                    if (res.ok) {
+                        const parsed = await res.json()
+                        const normalized = normalizePathwayData(parsed)
+                        if (!normalized) throw new Error('Downloaded JSON is not a valid PathwayData')
+                        if (!mounted) return
+                        setPathwayData(normalized)
+                        return
+                    }
+                } catch (err) {
+                    // fallthrough to localStorage
+                }
+
+                // Fallback: check localStorage key pathfinity.roadmap.<slug>
+                let raw: string | null = null
+                try {
+                    raw = localStorage.getItem(`pathfinity.roadmap.${slug}`)
+                } catch {}
+                if (!raw) throw new Error('No roadmap found for this slug')
+                const parsed = JSON.parse(raw)
+                const normalized = normalizePathwayData(parsed)
+                if (!normalized) throw new Error('Stored JSON is not a valid PathwayData')
                 if (!mounted) return
-                setPathwayData(pathway.pathwayData)
-                setError(null)
+                setPathwayData(normalized)
             } catch (err: any) {
-                // ignore abort errors
-                if (err?.name === 'AbortError') return
                 if (!mounted) return
                 setPathwayData(null)
-                setError(err?.message ?? 'An error occurred')
+                setError(err?.message ?? 'Failed to load roadmap')
             } finally {
                 if (!mounted) return
                 setLoading(false)
             }
         }
 
-        if (slug) fetchPathwayData()
+        if (slug) load()
 
         return () => {
             mounted = false
-            controller.abort()
         }
     }, [slug])
 
     return (
         <div className="min-h-screen w-screen relative bg-white">
-            {/* Back Button - kept and positioned at top-left */}
             <div className="absolute top-4 left-16 md:left-4 z-50">
                 <Button
                     variant="ghost"

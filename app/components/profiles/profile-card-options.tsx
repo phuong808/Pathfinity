@@ -17,12 +17,14 @@ export default function ProfileCardOptions({ onEdit, onDelete }: Props) {
           <MoreVertical className="size-4" />
         </Button>
       </DropdownMenuTrigger>
-
+      
       <DropdownMenuContent sideOffset={8}>
+        {/*
         <DropdownMenuItem onSelect={() => onEdit()}>
           <Edit className="size-4 mr-2" />
           Edit
         </DropdownMenuItem>
+        */}
 
         <DropdownMenuItem data-variant="destructive" onSelect={() => onDelete()}>
           <Trash2 className="size-4 mr-2 text-destructive" />

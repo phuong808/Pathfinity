@@ -31,6 +31,7 @@ const data = {
             url: "/Chat",
             icon: MessagesSquare,
         },
+        /*
         {
             title: "Catalog",
             url: "/Catalog",
@@ -41,6 +42,7 @@ const data = {
           url: "/SavedRoadmaps",
           icon: GraduationCap,
         },
+        */
         {
           title: "Roadmaps",
           url: "/Roadmaps",

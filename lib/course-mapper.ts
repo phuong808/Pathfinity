@@ -153,8 +153,8 @@ export function getCourseDetails(courseName: string, campusId: string = 'manoa')
     if (!match) continue;
     const [, prefix, number] = match;
     const found = campusCourses.find(
-      c => c.course_prefix.toUpperCase() === prefix &&
-           c.course_number.toUpperCase() === number
+      c => String(c.course_prefix || '').toUpperCase() === prefix &&
+           String(c.course_number || '').toUpperCase() === number
     );
     if (found) return found;
   }
