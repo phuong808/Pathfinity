@@ -1,265 +1,36 @@
 // Chat API route for the university course assistant.
-// Defines tools used by the assistant:
-// The file contains the system prompt and streaming response wiring.
 import { 
     streamText,
     UIMessage,
     convertToModelMessages,
-    tool,
     InferUITools,
     UIDataTypes,
-    stepCountIs
+    stepCountIs,
+    createIdGenerator,
+    validateUIMessages,
 } from 'ai';
 import { openai } from '@ai-sdk/openai';
-import { z } from 'zod';
-import { semanticSearch } from '@/lib/semantic-search';
-import { db } from '@/app/db/index';
-import { embedding as e } from '@/app/db/schema';
-import { sql } from 'drizzle-orm';
+import { loadChat, saveChat } from '@/app/db/actions';
+import { 
+    getCourse,
+    getCampuses,
+    getMajor,
+    getMajorDetails,
+    getDegrees,
+    getCampusInfo,
+    parsePrereqs,
+    retrieveContext,
+} from '@/lib/tools';
 
 const tools = {
-    getCourseByCode: tool({
-        description: "Get detailed information about a specific course by its exact course code (e.g., 'Com 2163', 'COM 2158'). Use this when user mentions a specific course code.",
-        inputSchema: z.object({
-            courseCode: z.string().describe("The exact course code (e.g., 'Com 2163')"),
-        }),
-        execute: async ({ courseCode }) => {
-            try {
-                // Normalize the course code (remove extra spaces, make uppercase)
-                const normalized = courseCode.trim().toUpperCase().replace(/\s+/g, ' ');
-                
-                const course = await db
-                    .select({
-                        course_code: e.courseCode,
-                        title: e.title,
-                        campus: e.campus,
-                        metadata: e.metadata,
-                    })
-                    .from(e)
-                    .where(sql`UPPER(${e.courseCode}) = ${normalized}`)
-                    .limit(1);
-
-                if (!course || course.length === 0) {
-                    return `Course ${courseCode} not found in the knowledge base. Please verify the course code or try searching with keywords.`;
-                }
-
-                const c = course[0];
-                const metadata = c.metadata as any;
-
-                const lines = [
-                    `Course: ${c.course_code} - ${c.title}`,
-                ];
-
-                if (c.campus) lines.push(`Campus/Department: ${c.campus}`);
-                
-                // Handle credits/units (check multiple fields)
-                const units = metadata?.num_units || metadata?.units || metadata?.credits || metadata?.credit_hours;
-                if (units !== undefined && units !== null && String(units).trim() !== '') {
-                    lines.push(`Units/Credits: ${units}`);
-                } else {
-                    lines.push(`Units/Credits: Not specified`);
-                }
-                
-                if (metadata?.course_desc) lines.push(`Description: ${metadata.course_desc}`);
-                if (metadata?.metadata && String(metadata.metadata).trim()) {
-                    lines.push(`Additional Info: ${metadata.metadata}`);
-                }
-                
-                // Check for various prerequisite field names
-                const prereqs = metadata?.prerequisites || metadata?.required_prep || metadata?.required_prereq;
-                if (prereqs) lines.push(`Prerequisites: ${prereqs}`);
-
-                // Add other metadata fields if available
-                if (metadata?.dept_name) lines.push(`Department Name: ${metadata.dept_name}`);
-                if (metadata?.inst_ipeds) lines.push(`Institution IPEDS: ${metadata.inst_ipeds}`);
-                if (metadata?.course_prefix) lines.push(`Course Prefix: ${metadata.course_prefix}`);
-                if (metadata?.course_number) lines.push(`Course Number: ${metadata.course_number}`);
-
-                return lines.join('\n\n');
-            } catch (error) {
-                console.error('Get course error:', error);
-                return 'Error retrieving course information. Please try again.';
-            }
-        }
-    }),
-    
-    listCourses: tool({
-        description: "List courses from the knowledge base. Use when user wants to see all courses, browse courses, or list courses from a specific department/campus.",
-        inputSchema: z.object({
-            department: z.string().optional().describe("Filter by department name (e.g., 'Pacific Center for Advanced Technology Training')"),
-            campus: z.string().optional().describe("Filter by campus name"),
-            limit: z.number().optional().default(20).describe("Maximum number of courses to return"),
-        }),
-        execute: async ({ department, campus, limit = 20 }) => {
-            try {
-                // Build WHERE conditions
-                const conditions = [];
-                if (department) {
-                    conditions.push(sql`${e.metadata}->>'dept_name' ILIKE ${`%${department}%`}`);
-                }
-                if (campus) {
-                    conditions.push(sql`${e.campus} ILIKE ${`%${campus}%`}`);
-                }
-
-                const baseSelect = db
-                    .select({
-                        course_code: e.courseCode,
-                        title: e.title,
-                        campus: e.campus,
-                        metadata: e.metadata,
-                    })
-                    .from(e);
-
-                // Apply WHERE conditions if present, then apply limit/orderBy on the final query.
-                const finalQuery = (conditions.length > 0)
-                    ? baseSelect.where(sql`${sql.join(conditions, sql` AND `)}`).limit(limit).orderBy(e.courseCode)
-                    : baseSelect.limit(limit).orderBy(e.courseCode);
-
-                const courses = await finalQuery;
-
-                if (!courses || courses.length === 0) {
-                    return 'No courses found matching those criteria.';
-                }
-
-                const formattedResults = courses.map((course, index) => {
-                    const metadata = course.metadata as any;
-                    const lines = [
-                        `[${index + 1}] ${course.course_code} - ${course.title}`,
-                    ];
-                    
-                    if (course.campus) lines.push(`   Campus/Department: ${course.campus}`);
-                    
-                    // Handle credits/units with fallback
-                    const units = metadata?.num_units || metadata?.units || metadata?.credits;
-                    if (units !== undefined && units !== null && String(units).trim() !== '') {
-                        lines.push(`   Units: ${units}`);
-                    }
-                    
-                    if (metadata?.course_desc) {
-                        const desc = String(metadata.course_desc);
-                        const truncated = desc.length > 200 ? desc.substring(0, 200) + '...' : desc;
-                        lines.push(`   Description: ${truncated}`);
-                    }
-                    
-                    return lines.join('\n');
-                }).join('\n\n');
-
-                return formattedResults;
-            } catch (error) {
-                console.error('List courses error:', error);
-                return 'Error retrieving course list. Please try again.';
-            }
-        }
-    }),
-    
-    searchKnowledgeBase: tool({
-        description: "Search the course knowledge base for specific courses or topics. Use when user asks about specific course codes, prerequisites, topics, or detailed course information.",
-        inputSchema: z.object({
-            query: z.string().describe("The search query to find relevant information"),
-        }),
-        execute: async ({ query }) => {
-            try {
-                const results = await semanticSearch(query, 5, 0.3);
-
-                if (!results || results.length === 0) {
-                    return 'No relevant course information found. Try rephrasing your question or ask about a specific course code.';
-                }
-
-                const formattedResults = results.map((result: any, index: number) => {
-                    // Build header with source info
-                    const headerParts = [`[${index + 1}]`];
-                    if (result.source) headerParts.push(result.source);
-                    if (result.course_code) headerParts.push(result.course_code);
-                    const header = headerParts.join(' | ');
-
-                    const content = result.content;
-
-                    // Helper function to extract fields from object
-                    const pick = (obj: any, candidates: string[]) => {
-                        for (const k of candidates) {
-                            if (obj[k] !== undefined && obj[k] !== null && String(obj[k]).trim() !== '') {
-                                return obj[k];
-                            }
-                        }
-                        return undefined;
-                    };
-
-                    // Handle different content types
-                    if (typeof content === 'string') {
-                        return `${header}\n${content.trim()}`;
-                    }
-
-                    if (Array.isArray(content)) {
-                        const body = content
-                            .map((c) => (typeof c === 'string' ? c : JSON.stringify(c)))
-                            .join('\n');
-                        return `${header}\n${body}`;
-                    }
-
-                    if (content && typeof content === 'object') {
-                        // Extract course fields
-                        const courseCode = pick(content, ['course_code', 'course', 'courseId', 'course_num', 'course_number', 'code']);
-                        const coursePrefix = pick(content, ['course_prefix']);
-                        const courseNumber = pick(content, ['course_number']);
-                        const title = pick(content, ['course_title', 'title', 'name']);
-                        const dept = pick(content, ['dept_name', 'department', 'dept', 'division']);
-                        const units = pick(content, ['num_units', 'units', 'credits', 'credit_hours']);
-                        const desc = pick(content, ['course_desc', 'description', 'desc', 'summary', 'overview']);
-                        const metadata = pick(content, ['metadata', 'additional_info', 'additional', 'notes']);
-                        const outcomes = pick(content, ['learner_outcomes', 'outcomes', 'learning_outcomes']);
-                        const prereqs = pick(content, ['prerequisites', 'required_prep', 'required_prereq', 'prereq']);
-                        const sectionNotes = pick(content, ['section_notes', 'sectionNotes', 'section', 'section_note']);
-
-                        const lines: string[] = [];
-
-                        // Course code line
-                        const courseCodeParts: string[] = [];
-                        if (courseCode) {
-                            courseCodeParts.push(String(courseCode));
-                        } else if (coursePrefix && courseNumber) {
-                            courseCodeParts.push(`${coursePrefix} ${courseNumber}`);
-                        }
-                        if (title) courseCodeParts.push(String(title));
-                        if (courseCodeParts.length) {
-                            lines.push(`Course: ${courseCodeParts.join(' - ')}`);
-                        }
-
-                        // Other fields
-                        if (dept) lines.push(`Department: ${String(dept)}`);
-                        if (units !== undefined) lines.push(`Units: ${String(units)}`);
-                        if (desc) lines.push(`Description: ${String(desc)}`);
-                        if (metadata) lines.push(`Additional Info: ${String(metadata)}`);
-                        
-                        // Handle outcomes (array or string)
-                        if (Array.isArray(outcomes)) {
-                            lines.push(`Learner Outcomes:\n${outcomes.map(o => `  • ${o}`).join('\n')}`);
-                        } else if (outcomes) {
-                            lines.push(`Learner Outcomes: ${String(outcomes)}`);
-                        }
-                        
-                        if (prereqs) lines.push(`Prerequisites: ${String(prereqs)}`);
-                        if (sectionNotes) lines.push(`Section Notes: ${String(sectionNotes)}`);
-
-                        // Fallback if no structured fields found
-                        if (lines.length === 0) {
-                            const fallback = pick(content, ['text', 'content', 'snippet']) || JSON.stringify(content, null, 2);
-                            return `${header}\n${String(fallback)}`;
-                        }
-
-                        return `${header}\n${lines.join('\n')}`;
-                    }
-
-                    // Last resort: stringify
-                    return `${header}\n${JSON.stringify(content)}`;
-                }).join('\n\n');
-
-                return formattedResults;
-            } catch (error) {
-                console.error('Search error:', error);
-                return 'Error searching the course knowledge base. Please try again or refine your query.';
-            }
-        }
-    })
+    getCourse,
+    getCampuses,
+    getMajor,
+    getMajorDetails,
+    getDegrees,
+    getCampusInfo,
+    parsePrereqs,
+    retrieveContext,
 };
 
 export type ChatTools = InferUITools<typeof tools>;
@@ -267,70 +38,212 @@ export type ChatMessage = UIMessage<never, UIDataTypes, ChatTools>;
 
 export async function POST(req: Request) {
     try {
-        const { messages }: { messages: ChatMessage[] } = await req.json();
+        const { message, id, model: requestedModel }: { message?: ChatMessage; id: string; model?: string } = await req.json();
 
-        const result = streamText({
-            model: openai('gpt-4.1-mini'),
-            messages: convertToModelMessages(messages),
-            tools,
-            system: `You are a helpful university course assistant with access to the course knowledge base.
-
-HOW TO RESPOND:
-
-For greetings and casual conversation:
-- Respond naturally and briefly, then offer to help with courses
-- Example: "Hello! I'm doing well, thank you. I'm here to help you find course information. What courses are you interested in?"
-
-For specific course code lookups:
-- Use getCourseByCode when user mentions a specific course code (e.g., "Com 2163", "tell me about COM 2158")
-- This guarantees finding the course if it exists and returns ALL metadata fields
-- Use for questions about specific fields: credits, IPEDS, department name, course prefix/number
-- Example: "Com 2163", "what is COM 2158", "credits for Com 2187", "what is the IPEDS for Com 2036"
-
-For listing/browsing courses:
-- Use listCourses tool for requests like "list all courses", "show me courses", "what courses are available"
-- Can filter by department or campus if user specifies
-- Present results in a clear, organized way
-- If many results, suggest being more specific
-- IMPORTANT: Only call this tool ONCE per response - do not repeat calls
-
-For specific course searches:
-- Use searchKnowledgeBase for topic-based searches, not exact course codes
-- Examples: "AWS courses", "courses about networking", "cybersecurity training"
-- Always cite results with [1], [2], etc.
-
-For course-related questions:
-- Choose the appropriate tool based on the question type
-- getCourseByCode: When user asks about a specific course code or its attributes
-- listCourses: When user wants to browse or see multiple courses
-- searchKnowledgeBase: When user searches by topic/keyword
-- If results found: Answer concisely with citations when appropriate
-- If no results: Explain you couldn't find that specific information and suggest alternatives
-
-IMPORTANT RULES:
-- When asked about credits/units for a course, use getCourseByCode to get complete info
-- If credits are "Not specified", clearly state that
-- For metadata fields (IPEDS, dept_name, etc.), use getCourseByCode
-- Never call the same tool twice in one response
-- Be conversational and helpful, not robotic
-
-For non-course questions (sports, weather, celebrities, general facts):
-- Politely decline and redirect to course information
-- Example: "I can only help with course information from our catalog. I don't have access to information about sports teams or other topics. Is there a course or program I can help you find?"
-
-RULES:
-- Always use tools for course-related questions
-- Choose the RIGHT tool: getCourseByCode for specific codes, listCourses for browsing, searchKnowledgeBase for topics
-- NEVER call the same tool multiple times in one response
-- Be conversational and helpful, not robotic
-- Cite sources with [1], [2] when providing course information from searchKnowledgeBase
-- Keep responses concise (2-5 sentences typically)
-- Guide users toward more specific queries if their question is too broad
-- When credits/units are not available, clearly state "Not specified" rather than saying you can't find the info`,
-            stopWhen: stepCountIs(2),
+        const previousMessages = await loadChat(id);
+        const allMessages = message ? [...previousMessages, message] : previousMessages;
+        const messages = await validateUIMessages({
+            messages: allMessages,
+            tools: tools as any,
         });
 
-        return result.toUIMessageStreamResponse();
+        // Allowed models for chat. Default is gpt-5.1-mini unless overridden safely.
+        const ALLOWED_CHAT_MODELS = [
+            'gpt-5.1',
+            'gpt-5.1-mini',
+            'gpt-4o-mini',
+            'gpt-4.1-mini',
+        ];
+
+        const defaultModel = process.env.CHAT_MODEL || 'gpt-5.1-mini';
+
+        function chooseModel(request?: string) {
+            if (request && ALLOWED_CHAT_MODELS.includes(request)) return request;
+            return defaultModel;
+        }
+
+        const selectedModel = chooseModel(requestedModel);
+
+        const result = streamText({
+            model: openai(selectedModel),
+            messages: convertToModelMessages(messages),
+            tools,
+            system: `You are Pathfinity, a warm and personalized career exploration and academic pathway guide for the University of Hawaii system. You help students confidently move forward with their academic and career decisions.
+
+INITIAL WELCOME CONTEXT:
+When users first interact with you, they see this welcome message:
+"Welcome! I'm so glad you're here. 🌟
+
+I'm Pathfinity, your personal career exploration and academic pathway guide. Whether you're just starting to think about your future, reconsidering your current direction, or planning a career pivot, I'm here to help you confidently move forward.
+
+With me, you can:
+✨ Explore potential career paths that match your goals
+✨ Discover relevant majors, programs, and training options
+✨ Learn about courses and skills needed for your dream path
+✨ Get personalized guidance — not generic advice
+
+Before we begin, I'd love to understand where you are in your journey so I can tailor the experience for you. Which one best describes you right now?
+
+1️⃣ I'm a middle or high school student exploring possible majors or careers
+2️⃣ I'm currently in college and may be reconsidering my major
+3️⃣ I'm already working and interested in career pivoting or upskilling"
+
+USER JOURNEY AWARENESS:
+- If user responds with "1" or mentions being in middle/high school: They're exploring future options. Focus on introducing different career paths, explaining what majors lead to what careers, and helping them understand their options without pressure.
+- If user responds with "2" or mentions reconsidering their major: They're currently in college and may be uncertain. Be supportive, help them explore alternative majors, understand transfer requirements, and make informed decisions about changing paths.
+- If user responds with "3" or mentions career pivoting/upskilling: They're working professionals looking to change careers or upskill. Focus on practical pathways, professional development programs, certificates, and how their existing experience can translate to new opportunities.
+- Remember their journey stage throughout the conversation and tailor your guidance accordingly.
+
+YOUR PERSONALITY:
+- Warm, encouraging, and supportive
+- Personalized (not generic) - remember context from the conversation
+- Professional but approachable
+- Patient and understanding of uncertainty
+- Focused on empowering students to make confident decisions
+
+CRITICAL RULES:
+1. ALWAYS respond to every user message, including greetings ("hi", "hello", "hey", "bro")
+2. When greeting back, be brief and ask what they need help with
+3. NEVER ignore the user or skip responding
+4. Use ONE tool per response maximum
+5. NEVER mention tool names, API errors, or technical issues to users
+6. If a tool fails or returns no results, provide a helpful fallback response
+7. Do not use emojis in responses
+8. Keep responses natural and conversational
+9. Remember and reference the user's journey stage (high school/college/working professional) when providing guidance
+
+EMBEDDING RETRIEVAL (ALWAYS USE BEFORE ANSWERING ACADEMIC QUERIES):
+- For ANY academic / course / major / degree / campus / roadmap planning question: first call retrieveContext with the user's query (and campus if specified, else default UH Manoa)
+- Use ONLY ONE tool (retrieveContext) unless user explicitly requests a specific course code (then you may use getCourse instead of retrieveContext)
+- NEVER show raw similarity scores, thresholds, or internal context blocks to the user
+- Use retrieveContext.formatted for a brief summary if helpful, but synthesize your answer from retrieveContext.context internally
+- If retrieveContext.found is false, proceed with a general answer and offer more specific queries
+
+TOOL USAGE INSTRUCTIONS:
+
+All tools now return structured objects with these fields:
+- found: boolean (whether results were found)
+- formatted: string (pre-formatted text to display)
+- message: string (error/help message if found is false)
+- error: boolean (if there was a system error)
+
+ALWAYS check the 'found' field first:
+- If found is true: display the 'formatted' field
+- If found is false: display the 'message' field
+- Never say "the tool returned" or mention technical details
+
+For CAMPUS queries:
+- List all campuses: use getCampuses, display result.formatted if found
+- Specific campus info: use getCampusInfo with campus name
+  - If found: write a brief intro about the campus, then display result.formatted
+  - If not found: display result.message and suggest getCampuses
+- After showing info, suggest exploring majors or courses
+
+For COURSE queries:
+- Exact course lookup (e.g. "ICS 211", "COM 2163"): use getCourse with the code
+  - If result.found is true, display result.formatted
+  - The result includes metadata field - save this for prerequisite queries
+- Keyword search (e.g. "accounting", "biology", "lab courses"): use getCourse with keywords
+  - If result.found is true, display result.formatted
+  - If result.found is false, display result.message
+- Campus-specific search: use getCourse with both query and campus parameters
+- If user asks about prerequisites after getting course details, use parsePrereqs with the metadata from getCourse result
+- After showing courses, offer to provide details about specific ones
+
+For PREREQUISITE queries:
+- When user asks "does X have prerequisites" or "what are the prerequisites for X":
+  1. First use getCourse to get the course (this returns metadata field)
+  2. Then use parsePrereqs with the metadata string from the getCourse result
+  3. Present prerequisites clearly:
+     - If prerequisites found: List them simply ("To take [COURSE], you need: [list]")
+     - If no prerequisites: "This course has no prerequisites listed."
+- If getCourse didn't return metadata, say "I don't have prerequisite information for this course."
+
+For MAJOR queries:
+- Search or list majors: use getMajor with optional keyword and/or campus
+  - If found: display result.formatted
+  - If not found: display result.message
+- Detailed major info: use getMajorDetails for specific major
+- Keep major descriptions clear and helpful
+- After listing majors, offer to provide more details about specific ones
+
+For DEGREE queries:
+- List degree types: use getDegrees with optional level filter
+  - If found: display result.formatted
+  - If not found: display result.message
+- Explain differences between degree levels naturally
+
+ERROR HANDLING:
+- If any tool returns found: false, display the message field exactly
+- If a tool has error: true, it's a system error - say "I'm having trouble with that right now. Please try again."
+- NEVER say things like "there was a mix-up", "the tool failed", or mention technical details
+- If getCourse returns nothing: the message field will have suggestions
+- If parsePrereqs gets no metadata: "I don't have prerequisite information for this course."
+- Always provide next steps or alternatives when something doesn't work
+
+RESPONSE FORMATTING:
+- When displaying tool results, use the 'formatted' field directly
+- Add brief natural context before/after tool output
+- Don't repeat the data in your own words - just present it
+- Keep your commentary brief and helpful
+
+CONVERSATION FLOW:
+- Greetings: "Hey! What can I help you find today?"
+- Follow-ups: Suggest related searches naturally
+- Course details: If they ask about a course, provide the info without making them ask twice
+- Prerequisites: Proactively offer prerequisite info when showing course details if they might need it
+-- Stay focused: Answer what they asked, then briefly suggest next steps
+
+Key Rules:
+- ONE tool per response
+- Vary your language—don't repeat the same phrases
+- Keep the structured data clean
+- Add warmth around the data, not in it
+- If something fails, pivot naturally without mentioning it
+
+ROADMAP OUTPUT RULES (CRITICAL FOR ROADMAP VIEWER)
+When the user asks for a semester-by-semester plan or roadmap, or after enough planning details are gathered AND they confirm they want a roadmap:
+1) Produce a valid JSON object EXACTLY matching this schema (PathwayData):
+{
+    "program_name": "<string>",
+    "institution": "<string>",
+    "total_credits": <number>,
+    "years": [
+        {
+            "year_number": <number>,
+            "semesters": [
+                {
+                    "semester_name": "fall_semester" | "spring_semester" | "summer_semester",
+                    "credits": <number>,
+                    "courses": [{ "name": "<string>", "credits": <number> }],
+                    "activities": ["<string>"]?,
+                    "internships": ["<string>"]?,
+                    "milestones": ["<string>"]?
+                }
+            ]
+        }
+    ]
+}
+2) JSON MUST be valid: double quotes for keys/strings, numbers as numbers, no comments, no trailing commas.
+3) Output ONLY the JSON inside a fenced code block labeled as json. Do not include any comments inside the block.
+4) When producing the final roadmap output, do NOT add ANY text before or after the code block. The response must contain only the single fenced JSON block.
+5) Do not wrap the object in any other property (no { "pathwayData": { ... } } wrappers). The top-level object MUST be PathwayData with keys: program_name, institution, total_credits, years.
+6) Use realistic credit loads (12-16 in fall/spring; optional/short summer). If data is missing, use placeholders.
+7) Do not invent impossible course loads.
+`,
+            stopWhen: stepCountIs(3),
+        });
+
+        return result.toUIMessageStreamResponse({
+            originalMessages: messages,
+            generateMessageId: createIdGenerator({
+                prefix: 'msg',
+                size: 16,
+            }),
+            onFinish: async ({ messages }) => {
+                await saveChat({ chatId: id, messages });
+            },
+        });
     } catch (error) {
         console.error('Error streaming chat completion:', error);
         return new Response('Failed to stream chat completion', { status: 500 });

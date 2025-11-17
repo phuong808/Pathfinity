@@ -1,28 +1,7 @@
 "use client"
 
-import {
-  PromptInput,
-  PromptInputActionAddAttachments,
-  PromptInputActionMenu,
-  PromptInputActionMenuContent,
-  PromptInputActionMenuTrigger,
-  PromptInputAttachment,
-  PromptInputAttachments,
-  PromptInputBody,
-  PromptInputFooter,
-  PromptInputHeader,
-  type PromptInputMessage,
-  PromptInputModelSelect,
-  PromptInputModelSelectContent,
-  PromptInputModelSelectItem,
-  PromptInputModelSelectTrigger,
-  PromptInputModelSelectValue,
-  PromptInputProvider,
-  PromptInputSpeechButton,
-  PromptInputSubmit,
-  PromptInputTextarea,
-  PromptInputTools,
-} from "@/app/components/ai-elements/prompt-input"
+import TextBox from './text-box'
+import type { PromptInputMessage } from "@/app/components/ai-elements/prompt-input"
 
 type ModelOption = { id: string; name: string }
 
@@ -48,54 +27,18 @@ export function PromptBox({
   className,
 }: Props) {
   return (
-    <PromptInputProvider>
-      <PromptInput onSubmit={onSubmit} className={className}>
-        <PromptInputHeader>
-          <PromptInputAttachments>
-            {(attachment) => <PromptInputAttachment data={attachment} />}
-          </PromptInputAttachments>
-        </PromptInputHeader>
-
-        <PromptInputBody>
-          <PromptInputTextarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask Pathfinity..."
-          />
-        </PromptInputBody>
-
-        <PromptInputFooter>
-          <PromptInputTools className="flex w-full items-center justify-between">
-            <PromptInputActionMenu>
-              <PromptInputActionMenuTrigger />
-              <PromptInputActionMenuContent>
-                <PromptInputActionAddAttachments />
-              </PromptInputActionMenuContent>
-            </PromptInputActionMenu>
-
-            <PromptInputModelSelect onValueChange={setModel} value={model}>
-              <PromptInputModelSelectTrigger>
-                <PromptInputModelSelectValue />
-              </PromptInputModelSelectTrigger>
-              <PromptInputModelSelectContent>
-                {models.map((modelOption) => (
-                  <PromptInputModelSelectItem
-                    key={modelOption.id}
-                    value={modelOption.id}
-                  >
-                    {modelOption.name}
-                  </PromptInputModelSelectItem>
-                ))}
-              </PromptInputModelSelectContent>
-            </PromptInputModelSelect>
-
-            <PromptInputSpeechButton className="ml-auto" />
-          </PromptInputTools>
-          <PromptInputSubmit status={status} />
-        </PromptInputFooter>
-      </PromptInput>
-    </PromptInputProvider>
+    <TextBox
+      input={input}
+      setInput={setInput}
+      onSubmit={onSubmit}
+      models={models}
+      model={model}
+      setModel={setModel}
+      status={status}
+      className={className}
+      // speech handled inline by the mic button; no extra modal
+    />
   )
 }
 
-export default PromptBox
+export default PromptBox;

@@ -1,0 +1,128 @@
+[
+  {
+    "program_name": "Associate in Arts – Liberal Arts (Psychology)",
+    "institution": "Kapiolani Community College",
+    "total_credits": 60,
+    "years": [
+      {
+        "year_number": 1,
+        "semesters": [
+          {
+            "semester_name": "first_semester",
+            "credits": 15,
+            "courses": [
+              {
+                "name": "Written Communication",
+                "credits": 3,
+                "category": "FW"
+              },
+              {
+                "name": "Quantitative Reasoning",
+                "credits": 3,
+                "category": "FQ"
+              },
+              {
+                "name": "ART 101",
+                "credits": 3,
+                "category": "DA"
+              },
+              {
+                "name": "AMST 201",
+                "credits": 3,
+                "category": "DH"
+              },
+              {
+                "name": "PSY 100",
+                "credits": 3,
+                "category": "Concentration in PSY"
+              }
+            ]
+          },
+          {
+            "semester_name": "second_semester",
+            "credits": 27,
+            "courses": [
+              {
+                "name": "ANTH 151",
+                "credits": 3,
+                "category": "FGA"
+              },
+              {
+                "name": "PSY 230",
+                "credits": 3,
+                "category": "DB"
+              },
+              {
+                "name": "BIOC 141",
+                "credits": 3,
+                "category": "DP"
+              },
+              {
+                "name": "BIOL 101L",
+                "credits": 3,
+                "category": "DY"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "year_number": 2,
+        "semesters": [
+          {
+            "semester_name": "third_semester",
+            "credits": 24,
+            "courses": [
+              {
+                "name": "GEO 102",
+                "credits": 3,
+                "category": "FGB"
+              },
+              {
+                "name": "JPN 101",
+                "credits": 3,
+                "category": "HSL"
+              },
+              {
+                "name": "PSY 225",
+                "credits": 3,
+                "category": "Concentration in PSY"
+              },
+              {
+                "name": "PSY 212",
+                "credits": 3,
+                "category": "Concentration in PSY"
+              }
+            ]
+          },
+          {
+            "semester_name": "fourth_semester",
+            "credits": 39,
+            "courses": [
+              {
+                "name": "JPN 102",
+                "credits": 4,
+                "category": "HSL"
+              },
+              {
+                "name": "PSY 240",
+                "credits": 3,
+                "category": "Concentration in PSY"
+              },
+              {
+                "name": "Elective",
+                "credits": 3,
+                "category": "Other than PSY"
+              },
+              {
+                "name": "Elective",
+                "credits": 3,
+                "category": "Other than PSY"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

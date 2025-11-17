@@ -60,7 +60,7 @@ export default function LoginPage() {
         });
 
         if (!result.error) {
-          router.push('/Home');
+          router.push('/Chat');
           router.refresh();
         } else {
           setError(result.error.message || 'Sign up failed');
@@ -72,7 +72,7 @@ export default function LoginPage() {
         });
 
         if (!result.error) {
-          router.push('/Home');
+          router.push('/Chat');
           router.refresh();
         } else {
           setError(result.error.message || 'Authentication failed');
@@ -95,7 +95,7 @@ export default function LoginPage() {
       // It will redirect to Google, then back to your callback URL
       await authClient.signIn.social({
         provider: 'google',
-        callbackURL: '/Home', // Where to redirect after successful auth
+        callbackURL: '/Chat', // Where to redirect after successful auth
       });
     } catch (error) {
       console.error('Google sign in error:', error);
@@ -113,7 +113,7 @@ export default function LoginPage() {
       // It will redirect to GitHub, then back to your callback URL
       await authClient.signIn.social({
         provider: 'github',
-        callbackURL: '/Home', // Where to redirect after successful auth
+        callbackURL: '/Chat', // Where to redirect after successful auth
       });
     } catch (error) {
       console.error('Github sign in error:', error);

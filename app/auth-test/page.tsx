@@ -55,7 +55,7 @@ export default function AuthTestPage() {
         <p><strong>Email Verified:</strong> {session.user.emailVerified ? 'Yes' : 'No'}</p>
       </div>
       <div className="flex gap-4">
-        <Button onClick={() => router.push('/Home')}>Go to Home</Button>
+  <Button onClick={() => router.push('/Chat')}>Go to Chat</Button>
         <Button variant="outline" onClick={handleSignOut}>Sign Out</Button>
       </div>
     </div>

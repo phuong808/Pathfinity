@@ -7,7 +7,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "cleanup-duplicates": "tsx scripts/run-cleanup.ts"
+    "cleanup-duplicates": "tsx scripts/run-cleanup.ts",
+    "seed:uh": "tsx scripts/seed/seed-uh.ts",
+    "seed:manoa": "tsx scripts/seed/seed-manoa.ts",
+    "seed:courses-all": "tsx scripts/seed/seed-courses-all.ts",
+    "seed:degrees": "tsx scripts/seed/seed-degrees-majors.ts",
+    "seed:pathways": "tsx scripts/seed/seed-pathways.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.58",
@@ -47,6 +52,7 @@
     "ai": "^5.0.83",
     "bcryptjs": "^3.0.2",
     "better-auth": "^1.3.32",
+    "cheerio": "^1.1.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -60,6 +66,7 @@
     "nanoid": "^5.1.6",
     "next": "16.0.0",
     "next-themes": "^0.4.6",
+    "node-fetch": "^3.3.2",
     "openai": "^6.7.0",
     "react": "19.2.0",
     "react-day-picker": "^9.11.1",
@@ -81,7 +88,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "drizzle-kit": "^0.31.6",
+    "drizzle-kit": "^0.31.7",
     "eslint": "^9",
     "eslint-config-next": "16.0.0",
     "tailwindcss": "^4",

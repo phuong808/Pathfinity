@@ -194,8 +194,8 @@ export default function ProfilePage() {
 
         {/* Navigation */}
         <div className="flex gap-4">
-          <Button variant="outline" onClick={() => router.push('/Home')} className="flex-1">
-            Back to Home
+      <Button variant="outline" onClick={() => router.push('/Chat')} className="flex-1">
+        Back to Chat
           </Button>
           <Button variant="outline" onClick={handleSignOut} className="flex-1">
             Sign Out

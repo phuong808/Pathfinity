@@ -7,7 +7,7 @@ import {
   CollapsibleTrigger,
 } from "@/app/components/ui/collapsible";
 import { cn } from "@/lib/utils";
-import type { ToolUIPart } from "ai";
+// ToolUIPart typing in the `ai` package may vary across versions; treat as unknown
 import {
   CheckCircleIcon,
   ChevronDownIcon,
@@ -31,13 +31,13 @@ export const Tool = ({ className, ...props }: ToolProps) => (
 
 export type ToolHeaderProps = {
   title?: string;
-  type: ToolUIPart["type"];
-  state: ToolUIPart["state"];
+  type: string;
+  state: string;
   className?: string;
 };
 
-const getStatusBadge = (status: ToolUIPart["state"]) => {
-  const labels: Record<ToolUIPart["state"], string> = {
+const getStatusBadge = (status: string) => {
+  const labels: Record<string, string> = {
     "input-streaming": "Pending",
     "input-available": "Running",
     "approval-requested": "Awaiting Approval",
@@ -47,7 +47,7 @@ const getStatusBadge = (status: ToolUIPart["state"]) => {
     "output-denied": "Denied",
   };
 
-  const icons: Record<ToolUIPart["state"], ReactNode> = {
+  const icons: Record<string, ReactNode> = {
     "input-streaming": <CircleIcon className="size-4" />,
     "input-available": <ClockIcon className="size-4 animate-pulse" />,
     "approval-requested": <ClockIcon className="size-4 text-yellow-600" />,
@@ -103,7 +103,7 @@ export const ToolContent = ({ className, ...props }: ToolContentProps) => (
 );
 
 export type ToolInputProps = ComponentProps<"div"> & {
-  input: ToolUIPart["input"];
+  input: any;
 };
 
 export const ToolInput = ({ className, input, ...props }: ToolInputProps) => (
@@ -118,8 +118,8 @@ export const ToolInput = ({ className, input, ...props }: ToolInputProps) => (
 );
 
 export type ToolOutputProps = ComponentProps<"div"> & {
-  output: ToolUIPart["output"];
-  errorText: ToolUIPart["errorText"];
+  output: any;
+  errorText: any;
 };
 
 export const ToolOutput = ({

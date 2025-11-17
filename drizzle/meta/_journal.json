@@ -36,6 +36,69 @@
       "when": 1761983798044,
       "tag": "0004_dear_wendell_vaughn",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1762239161963,
+      "tag": "0005_secret_leper_queen",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1762242447690,
+      "tag": "0006_flimsy_plazm",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1762691981487,
+      "tag": "0007_slow_mole_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1762755644741,
+      "tag": "0008_normal_magma",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1762759517471,
+      "tag": "0009_gigantic_lorna_dane",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1762859826716,
+      "tag": "0010_aberrant_whiplash",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1763135989711,
+      "tag": "0011_magenta_magus",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1763136675433,
+      "tag": "0012_absent_fallen_one",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1763217565255,
+      "tag": "0013_true_longshot",
+      "breakpoints": true
     }
   ]
 }

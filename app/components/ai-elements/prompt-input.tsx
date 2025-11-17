@@ -239,6 +239,24 @@ export function PromptInputProvider({
 
 const LocalAttachmentsContext = createContext<AttachmentsContext | null>(null);
 
+// Recording context: provides live recording state for other prompt input parts
+export type RecordingContextType = {
+  isRecording: boolean;
+  level: number;
+  levels: number[];
+  spectrum: number[];
+  elapsedMs: number;
+  isProcessing: boolean;
+  _setIsProcessing: (v: boolean) => void;
+  // internal setters exposed to update state
+  _setIsRecording: (v: boolean) => void;
+  _pushLevel: (v: number) => void;
+  _setElapsedMs: (ms: number) => void;
+  _setSpectrum: (s: number[]) => void;
+};
+
+const RecordingContext = createContext<RecordingContextType | null>(null);
+
 export const usePromptInputAttachments = () => {
   // Dual-mode: prefer provider if present, otherwise use local
   const provider = useOptionalProviderAttachments();
@@ -286,6 +304,7 @@ export function PromptInputAttachment({
           <div className="relative size-5 shrink-0">
             <div className="absolute inset-0 flex size-5 items-center justify-center overflow-hidden rounded bg-background transition-opacity group-hover:opacity-0">
               {isImage ? (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   alt={filename || "attachment"}
                   className="size-5 object-cover"
@@ -321,6 +340,7 @@ export function PromptInputAttachment({
         <div className="w-auto space-y-3">
           {isImage && (
             <div className="flex max-h-96 w-96 items-center justify-center overflow-hidden rounded-md border">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 alt={filename || "attachment preview"}
                 className="max-h-full max-w-full object-contain"
@@ -525,36 +545,52 @@ export const PromptInput = ({
     [matchesAccept, maxFiles, maxFileSize, onError]
   );
 
-  const add = usingProvider
-    ? (files: File[] | FileList) => controller.attachments.add(files)
-    : addLocal;
+  const add = useMemo<((files: File[] | FileList) => void)>(
+    () => (usingProvider
+      ? (files: File[] | FileList) => controller.attachments.add(files)
+      : addLocal
+    ),
+    [usingProvider, controller, addLocal]
+  );
 
-  const remove = usingProvider
-    ? (id: string) => controller.attachments.remove(id)
-    : (id: string) =>
-        setItems((prev) => {
-          const found = prev.find((file) => file.id === id);
-          if (found?.url) {
-            URL.revokeObjectURL(found.url);
-          }
-          return prev.filter((file) => file.id !== id);
-        });
-
-  const clear = usingProvider
-    ? () => controller.attachments.clear()
-    : () =>
-        setItems((prev) => {
-          for (const file of prev) {
-            if (file.url) {
-              URL.revokeObjectURL(file.url);
+  const remove = useMemo<((id: string) => void)>(
+    () => (usingProvider
+      ? (id: string) => controller.attachments.remove(id)
+      : (id: string) =>
+          setItems((prev) => {
+            const found = prev.find((file) => file.id === id);
+            if (found?.url) {
+              URL.revokeObjectURL(found.url);
             }
-          }
-          return [];
-        });
+            return prev.filter((file) => file.id !== id);
+          })
+    ),
+    [usingProvider, controller]
+  );
 
-  const openFileDialog = usingProvider
-    ? () => controller.attachments.openFileDialog()
-    : openFileDialogLocal;
+  const clear = useMemo<(() => void)>(
+    () => (usingProvider
+      ? () => controller.attachments.clear()
+      : () =>
+          setItems((prev) => {
+            for (const file of prev) {
+              if (file.url) {
+                URL.revokeObjectURL(file.url);
+              }
+            }
+            return [];
+          })
+    ),
+    [usingProvider, controller]
+  );
+
+  const openFileDialog = useMemo<(() => void)>(
+    () => (usingProvider
+      ? () => controller.attachments.openFileDialog()
+      : openFileDialogLocal
+    ),
+    [usingProvider, controller, openFileDialogLocal]
+  );
 
   // Let provider know about our hidden file input so external menus can call openFileDialog()
   useEffect(() => {
@@ -679,7 +715,7 @@ export const PromptInput = ({
 
     // Convert blob URLs to data URLs asynchronously
     Promise.all(
-      files.map(async ({ id, ...item }) => {
+      files.map(async (item) => {
         if (item.url && item.url.startsWith("blob:")) {
           return {
             ...item,
@@ -711,7 +747,7 @@ export const PromptInput = ({
             controller.textInput.clear();
           }
         }
-      } catch (error) {
+      } catch {
         // Don't clear on error - user may want to retry
       }
     });
@@ -741,13 +777,52 @@ export const PromptInput = ({
     </>
   );
 
-  return usingProvider ? (
-    inner
-  ) : (
-    <LocalAttachmentsContext.Provider value={ctx}>
-      {inner}
-    </LocalAttachmentsContext.Provider>
+  // Recording context provider: lift recording state so textarea can render waveform
+  const [recIsRecording, _setRecIsRecording] = useState<boolean>(false);
+  const [recLevel] = useState<number>(0);
+  const [recLevels, _setRecLevels] = useState<number[]>([]);
+  const [recElapsedMs, _setRecElapsedMs] = useState<number>(0);
+  const [recSpectrum, _setRecSpectrum] = useState<number[]>([]);
+  const [recIsProcessing, _setRecIsProcessing] = useState<boolean>(false);
+
+  const _pushRecLevel = useCallback((v: number) => {
+    _setRecLevels((prev) => {
+      // apply light exponential smoothing to incoming level
+      const last = prev.length ? prev[prev.length - 1] : 0;
+      const smooth = last * 0.75 + v * 0.25;
+      const next = prev.concat(smooth).slice(-128);
+      return next;
+    });
+  }, []);
+
+  const recordingCtxVal: RecordingContextType = useMemo(
+    () => ({
+      isRecording: recIsRecording,
+      level: recLevel,
+      levels: recLevels,
+      spectrum: recSpectrum,
+      elapsedMs: recElapsedMs,
+      isProcessing: recIsProcessing,
+      _setIsProcessing: _setRecIsProcessing,
+      _setIsRecording: _setRecIsRecording,
+      _pushLevel: _pushRecLevel,
+      _setElapsedMs: _setRecElapsedMs,
+      _setSpectrum: _setRecSpectrum,
+    }),
+    [recIsRecording, recLevel, recLevels, recElapsedMs, _pushRecLevel, recSpectrum, recIsProcessing]
   );
+
+  const wrapped = (
+    <RecordingContext.Provider value={recordingCtxVal}>
+      {usingProvider ? (
+        inner
+      ) : (
+        <LocalAttachmentsContext.Provider value={ctx}>{inner}</LocalAttachmentsContext.Provider>
+      )}
+    </RecordingContext.Provider>
+  );
+
+  return wrapped;
 };
 
 export type PromptInputBodyProps = HTMLAttributes<HTMLDivElement>;
@@ -772,6 +847,156 @@ export const PromptInputTextarea = ({
   const controller = useOptionalPromptInputController();
   const attachments = usePromptInputAttachments();
   const [isComposing, setIsComposing] = useState(false);
+  const recordingCtx = useContext(RecordingContext);
+  // levels are still available, but we now render spectrum; keep memo to avoid re-alloc
+  // const levels = useMemo(() => recordingCtx?.levels ?? [], [recordingCtx?.levels]);
+  const spectrum = useMemo(() => recordingCtx?.spectrum ?? [], [recordingCtx?.spectrum]);
+  const recElapsed = recordingCtx?.elapsedMs ?? 0;
+
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  // previous displayed heights for smoothing: pairs and optional center
+  const prevPairHeightsRef = useRef<number[]>([]);
+  const prevCenterHeightRef = useRef<number>(0);
+
+    useEffect(() => {
+      const canvas = canvasRef.current;
+      const wrapper = wrapperRef.current;
+      if (!canvas || !wrapper) return; 
+
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      const width = Math.max(100, wrapper.clientWidth);
+  // reduce waveform height by ~50% from previous value: keep within sensible bounds
+  const original = Math.min(140, Math.max(28, wrapper.clientHeight - 8 + 80));
+  const visHeight = Math.max(20, Math.round(original * 0.5));
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(visHeight * dpr);
+      canvas.style.width = `${width}px`; 
+      canvas.style.height = `${visHeight}px`; 
+      // visually widen the waveform (scale X) without changing layout
+      // this makes the bars appear ~1.5x wider
+      try {
+        canvas.style.transform = "scaleX(1.5)";
+        canvas.style.transformOrigin = "center";
+      } catch {}
+
+      const ctx2 = canvas.getContext("2d");
+      if (!ctx2) return;
+      ctx2.scale(dpr, dpr);
+      ctx2.clearRect(0, 0, width, visHeight);
+
+      const centerY = visHeight / 2;
+      // background (transparent)
+      ctx2.fillStyle = "transparent";
+      ctx2.fillRect(0, 0, width, visHeight);
+
+      const spec = spectrum;
+      if (!spec || spec.length === 0) {
+        // faint center line
+        ctx2.strokeStyle = "rgba(148,163,184,0.12)";
+        ctx2.lineWidth = 1;
+        ctx2.beginPath();
+        ctx2.moveTo(0, centerY);
+        ctx2.lineTo(width, centerY);
+        ctx2.stroke();
+        return;
+      }
+
+      // colorful radial backdrop so the inner area blends and looks vibrant
+      try {
+        const centerX = width / 2;
+        const grad = ctx2.createRadialGradient(centerX, centerY, 0, centerX, centerY, Math.max(width, visHeight));
+        grad.addColorStop(0, "rgba(99,102,241,0.12)"); // indigo
+        grad.addColorStop(0.5, "rgba(139,92,246,0.08)"); // purple
+        grad.addColorStop(1, "rgba(0,0,0,0)");
+        ctx2.fillStyle = grad;
+        ctx2.fillRect(0, 0, width, visHeight);
+      } catch {}
+
+  // draw mirrored vertical frequency bars centered on the canvas with gradient fill and rounded caps
+  const bars = Math.min(64, spec.length);
+      const barGap = 1;
+      const barW = Math.max(1, Math.floor((width - (bars - 1) * barGap) / bars));
+      const centerX = Math.floor(width / 2);
+
+      // horizontal gradient for bars (left-to-right colorful)
+  const barGrad = ctx2.createLinearGradient(0, 0, width, 0);
+      barGrad.addColorStop(0, '#60a5fa'); // sky-400
+      barGrad.addColorStop(0.45, '#7c3aed'); // purple-600
+      barGrad.addColorStop(1, '#fb7185'); // rose-400
+
+      // glow settings
+      const glowColor = 'rgba(124,58,237,0.28)';
+      // slightly reduced sensitivity from previous value
+      const sensitivity = 2.2;
+      const half = Math.floor(bars / 2);
+
+      // helper: draw rounded rect
+      const drawRoundedRect = (x: number, y: number, w: number, h: number, r = Math.min(4, w / 2)) => {
+        ctx2.beginPath();
+        const radius = Math.max(0, Math.min(r, h / 2));
+        ctx2.moveTo(x + radius, y);
+        ctx2.arcTo(x + w, y, x + w, y + h, radius);
+        ctx2.arcTo(x + w, y + h, x, y + h, radius);
+        ctx2.arcTo(x, y + h, x, y, radius);
+        ctx2.arcTo(x, y, x + w, y, radius);
+        ctx2.closePath();
+        ctx2.fill();
+      };
+
+    // attack/release smoothing: fast attack (spike up), faster release for erratic spikes
+    const alphaAttack = 0.9; // when target > prev (rise quickly)
+    // increased release alpha to make the bars decay faster (more erratic look)
+    const alphaRelease = 0.85; // when target < prev (decay)
+
+      // draw center bar if odd number of bars (with smoothing)
+      if (bars % 2 === 1) {
+        const midIdx = half;
+        let v = spec[midIdx] ?? 0;
+        v = Math.min(1, v * sensitivity);
+        const targetH = Math.max(2, Math.round(v * (visHeight - 6)));
+  const prev = prevCenterHeightRef.current ?? 0;
+  const useAlpha = targetH > prev ? alphaAttack : alphaRelease;
+  const displayedH = Math.round(prev * (1 - useAlpha) + targetH * useAlpha);
+        const x = centerX - Math.floor(barW / 2);
+        const y = centerY - displayedH / 2;
+        ctx2.save();
+        ctx2.shadowBlur = 10;
+        ctx2.shadowColor = glowColor;
+        ctx2.fillStyle = barGrad;
+        drawRoundedRect(x, y, barW, displayedH, Math.max(2, Math.floor(barW / 2)));
+        ctx2.restore();
+        prevCenterHeightRef.current = displayedH;
+      }
+
+      // draw mirrored pairs with smoothing
+      for (let i = 0; i < half; i++) {
+        const leftIdx = i;
+        const rightIdx = bars - 1 - i;
+        const raw = ((spec[leftIdx] ?? 0) + (spec[rightIdx] ?? 0)) / 2;
+        const v = Math.min(1, raw * sensitivity);
+        const targetH = Math.max(2, Math.round(v * (visHeight - 6)));
+
+  const prev = prevPairHeightsRef.current[i] ?? 0;
+  const useAlpha = targetH > prev ? alphaAttack : alphaRelease;
+  const displayedH = Math.round(prev * (1 - useAlpha) + targetH * useAlpha);
+
+        const offset = i + (bars % 2 === 1 ? 1 : 0);
+        const xLeft = centerX - offset * (barW + barGap) - barW;
+        const xRight = centerX + (offset - (bars % 2 === 1 ? 0 : 1)) * (barW + barGap);
+
+        const y = centerY - displayedH / 2;
+        ctx2.save();
+        ctx2.shadowBlur = 8;
+        ctx2.shadowColor = glowColor;
+        ctx2.fillStyle = barGrad;
+        drawRoundedRect(xLeft, y, barW, displayedH, Math.max(2, Math.floor(barW / 2)));
+        drawRoundedRect(xRight, y, barW, displayedH, Math.max(2, Math.floor(barW / 2)));
+        ctx2.restore();
+
+        prevPairHeightsRef.current[i] = displayedH;
+      }
+    }, [spectrum, recElapsed]);
 
   const handleKeyDown: KeyboardEventHandler<HTMLTextAreaElement> = (e) => {
     if (e.key === "Enter") {
@@ -835,18 +1060,43 @@ export const PromptInputTextarea = ({
         onChange,
       };
 
+  // When recording, render a smooth canvas waveform in-place of the textarea
+  if (recordingCtx?.isRecording) {
+    return (
+      <div
+        ref={wrapperRef}
+        className={cn(
+          // revert container back to default sizing but with white background
+          "field-sizing-content max-h-48 min-h-16 rounded-md bg-white px-0 py-0",
+          className
+        )}
+      >
+        <canvas ref={canvasRef} className="block w-full h-full" />
+      </div>
+    );
+  }
+
   return (
-    <InputGroupTextarea
-      className={cn("field-sizing-content max-h-48 min-h-16", className)}
-      name="message"
-      onCompositionEnd={() => setIsComposing(false)}
-      onCompositionStart={() => setIsComposing(true)}
-      onKeyDown={handleKeyDown}
-      onPaste={handlePaste}
-      placeholder={placeholder}
-      {...props}
-      {...controlledProps}
-    />
+    <>
+      <InputGroupTextarea
+        className={cn("field-sizing-content max-h-48 min-h-16", className)}
+        name="message"
+        onCompositionEnd={() => setIsComposing(false)}
+        onCompositionStart={() => setIsComposing(true)}
+        onKeyDown={handleKeyDown}
+        onPaste={handlePaste}
+        placeholder={placeholder}
+        {...props}
+        {...controlledProps}
+      />
+
+      {recordingCtx?.isProcessing && (
+        <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2Icon className="size-4 animate-spin" />
+          <span>Processing transcription…</span>
+        </div>
+      )}
+    </>
   );
 };
 
@@ -997,13 +1247,13 @@ interface SpeechRecognition extends EventTarget {
   lang: string;
   start(): void;
   stop(): void;
-  onstart: ((this: SpeechRecognition, ev: Event) => any) | null;
-  onend: ((this: SpeechRecognition, ev: Event) => any) | null;
+  onstart: ((this: SpeechRecognition, ev: Event) => void) | null;
+  onend: ((this: SpeechRecognition, ev: Event) => void) | null;
   onresult:
-    | ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => any)
+    | ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => void)
     | null;
   onerror:
-    | ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => any)
+    | ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => void)
     | null;
 }
 
@@ -1050,100 +1300,272 @@ export type PromptInputSpeechButtonProps = ComponentProps<
   textareaRef?: RefObject<HTMLTextAreaElement | null>;
   onTranscriptionChange?: (text: string) => void;
 };
-
 export const PromptInputSpeechButton = ({
   className,
   textareaRef,
   onTranscriptionChange,
   ...props
 }: PromptInputSpeechButtonProps) => {
-  const [isListening, setIsListening] = useState(false);
-  const [recognition, setRecognition] = useState<SpeechRecognition | null>(
-    null
-  );
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const controller = useOptionalPromptInputController();
+  const recordingCtx = useContext(RecordingContext);
+  const [isRecording, setIsRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const silenceTimerRef = useRef<number | null>(null);
+  const silenceStartRef = useRef<number | null>(null);
+  // visual/audio indicators
+  // Keep internal level/elapsed for backwards compatibility; not used by UI directly
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [level, setLevel] = useState<number>(0);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [elapsedMs, setElapsedMs] = useState<number>(0); // kept for internal timing
+  const startTimeRef = useRef<number | null>(null);
 
-  useEffect(() => {
-    if (
-      typeof window !== "undefined" &&
-      ("SpeechRecognition" in window || "webkitSpeechRecognition" in window)
-    ) {
-      const SpeechRecognition =
-        window.SpeechRecognition || window.webkitSpeechRecognition;
-      const speechRecognition = new SpeechRecognition();
+  const stopRecording = useCallback(async () => {
+    const mr = mediaRecorderRef.current;
+    if (!mr) return;
 
-      speechRecognition.continuous = true;
-      speechRecognition.interimResults = true;
-      speechRecognition.lang = "en-US";
-
-      speechRecognition.onstart = () => {
-        setIsListening(true);
-      };
-
-      speechRecognition.onend = () => {
-        setIsListening(false);
-      };
-
-      speechRecognition.onresult = (event) => {
-        let finalTranscript = "";
-
-        const results = Array.from(event.results);
-
-        for (const result of results) {
-          if (result.isFinal) {
-            finalTranscript += result[0]?.transcript ?? "";
-          }
-        }
-
-        if (finalTranscript && textareaRef?.current) {
-          const textarea = textareaRef.current;
-          const currentValue = textarea.value;
-          const newValue =
-            currentValue + (currentValue ? " " : "") + finalTranscript;
-
-          textarea.value = newValue;
-          textarea.dispatchEvent(new Event("input", { bubbles: true }));
-          onTranscriptionChange?.(newValue);
-        }
-      };
-
-      speechRecognition.onerror = (event) => {
-        console.error("Speech recognition error:", event.error);
-        setIsListening(false);
-      };
-
-      recognitionRef.current = speechRecognition;
-      setRecognition(speechRecognition);
+    try {
+      if (mr.state === "recording") mr.stop();
+    } catch (err) {
+      console.warn("error stopping recorder", err);
     }
 
-    return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
+    setIsRecording(false);
+
+    if (audioContextRef.current) {
+      try {
+        audioContextRef.current.close();
+      } catch {}
+      audioContextRef.current = null;
+    }
+    analyserRef.current = null;
+    // ensure rAF loop stopped if still running
+    if (silenceTimerRef.current) {
+      try {
+        window.cancelAnimationFrame(silenceTimerRef.current as number);
+      } catch {}
+      silenceTimerRef.current = null;
+    }
+    // reset visual indicators
+    try {
+      setLevel(0);
+      setElapsedMs(0);
+      startTimeRef.current = null;
+      recordingCtx?._setIsRecording(false);
+      recordingCtx?._setElapsedMs(0);
+      recordingCtx?._pushLevel(0);
+    } catch {}
+
+    // assemble blob and upload
+    const chunks = chunksRef.current.splice(0);
+    if (chunks.length === 0) return;
+    const blob = new Blob(chunks, { type: "audio/webm" });
+
+    // show processing indicator while we upload and wait for transcription
+    try {
+      recordingCtx?._setIsProcessing(true);
+    } catch {}
+    try {
+      const fd = new FormData();
+      fd.append("file", blob, "audio.webm");
+
+      const res = await fetch("/api/speech-to-text", { method: "POST", body: fd });
+      if (!res.ok) {
+        console.error("Transcription request failed", await res.text());
+        return;
       }
-    };
-  }, [textareaRef, onTranscriptionChange]);
-
-  const toggleListening = useCallback(() => {
-    if (!recognition) {
-      return;
+      const json = await res.json();
+      const text = json.text ?? json.transcript ?? "";
+      if (text) {
+        // Update provider-controlled textarea when possible
+        if (controller) {
+          const current = controller.textInput.value || "";
+          controller.textInput.setInput((current ? current + " " : "") + text);
+        } else if (textareaRef?.current) {
+          const ta = textareaRef.current;
+          const current = ta.value || "";
+          const newValue = current + (current ? " " : "") + text;
+          ta.value = newValue;
+          ta.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+        onTranscriptionChange?.(text);
+      }
+    } catch (err) {
+      console.error("Speech upload/transcribe error", err);
+    } finally {
+      try {
+        recordingCtx?._setIsProcessing(false);
+      } catch {}
     }
+  }, [controller, textareaRef, onTranscriptionChange, recordingCtx]);
 
-    if (isListening) {
-      recognition.stop();
+  const startRecording = useCallback(async () => {
+    if (isRecording) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      const options: MediaRecorderOptions = {};
+      try {
+        // prefer webm when available
+        options.mimeType = "audio/webm";
+      } catch {}
+
+      const mr = new MediaRecorder(stream, options);
+      mediaRecorderRef.current = mr;
+      chunksRef.current = [];
+
+      mr.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
+      };
+
+      mr.onstop = () => {
+        // ensure tracks stopped
+        stream.getTracks().forEach((t) => t.stop());
+      };
+
+      // setup audio context analyser for silence detection
+  type WinAudio = { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext };
+  const win = window as unknown as WinAudio;
+  const AudioCtor = win.AudioContext ?? win.webkitAudioContext;
+  const audioCtx = new (AudioCtor as typeof AudioContext)();
+      audioContextRef.current = audioCtx;
+      const source = audioCtx.createMediaStreamSource(stream);
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 2048;
+      source.connect(analyser);
+      analyserRef.current = analyser;
+
+      silenceStartRef.current = null;
+
+      // rAF-driven analyser/render loop for smooth 60fps updates
+      const rafLoop = () => {
+        if (!analyserRef.current) return;
+        const bufLen = analyserRef.current.frequencyBinCount;
+        const data = new Uint8Array(bufLen);
+        analyserRef.current.getByteTimeDomainData(data);
+        let sum = 0;
+        for (let i = 0; i < bufLen; i++) {
+          const v = (data[i] - 128) / 128;
+          sum += v * v;
+        }
+        const rms = Math.sqrt(sum / bufLen);
+        // update visual level (clamp and scale)
+        const clamped = Math.max(0, Math.min(1, rms * 3));
+        try {
+          setLevel(clamped);
+          recordingCtx?._pushLevel(clamped);
+          const elapsed = startTimeRef.current ? Date.now() - startTimeRef.current : 0;
+          setElapsedMs(elapsed);
+          recordingCtx?._setElapsedMs(elapsed);
+        } catch {}
+
+        // compute frequency-domain spectrum and push to recording context
+        try {
+          const freqCount = analyserRef.current!.frequencyBinCount;
+          const freqData = new Uint8Array(freqCount);
+          analyserRef.current!.getByteFrequencyData(freqData);
+          // downsample / normalize into 64 bins (0..1)
+          const bins = 64;
+          const step = Math.max(1, Math.floor(freqCount / bins));
+          const spectrum: number[] = [];
+          for (let b = 0; b < bins; b++) {
+            let ssum = 0;
+            let count = 0;
+            for (let k = b * step; k < (b + 1) * step && k < freqCount; k++) {
+              ssum += freqData[k];
+              count++;
+            }
+            const avg = count ? ssum / count : 0;
+            spectrum.push(Math.max(0, Math.min(1, avg / 255)));
+          }
+          recordingCtx?._setSpectrum(spectrum);
+        } catch {
+          // ignore
+        }
+
+        const SILENCE_THRESHOLD = 0.01; // tweakable
+        const SILENCE_TIMEOUT = 2000; // ms of silence to auto-stop
+        if (rms < SILENCE_THRESHOLD) {
+          if (silenceStartRef.current == null) silenceStartRef.current = Date.now();
+          else if (Date.now() - silenceStartRef.current > SILENCE_TIMEOUT) {
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+              mediaRecorderRef.current.stop();
+            }
+          }
+        } else {
+          silenceStartRef.current = null;
+        }
+
+        silenceTimerRef.current = window.requestAnimationFrame(rafLoop);
+      };
+
+      silenceTimerRef.current = window.requestAnimationFrame(rafLoop);
+
+      const MAX_MS = 60_000; // 60s limit
+      const maxTimer = window.setTimeout(() => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+          mediaRecorderRef.current.stop();
+        }
+      }, MAX_MS);
+
+      mr.onstop = async () => {
+        if (silenceTimerRef.current) {
+          try {
+            window.cancelAnimationFrame(silenceTimerRef.current as number);
+          } catch {}
+          silenceTimerRef.current = null;
+        }
+        clearTimeout(maxTimer);
+        // stop audio context
+        try {
+          if (audioContextRef.current) {
+            audioContextRef.current.close();
+            audioContextRef.current = null;
+          }
+        } catch {}
+        setIsRecording(false);
+        await stopRecording();
+      };
+
+      mr.start();
+  startTimeRef.current = Date.now();
+  setElapsedMs(0);
+  setLevel(0);
+  setIsRecording(true);
+  recordingCtx?._setIsRecording(true);
+  recordingCtx?._setElapsedMs(0);
+    } catch (err) {
+      console.error("start recording failed", err);
+      setIsRecording(false);
+    }
+  }, [isRecording, stopRecording, recordingCtx]);
+
+  const toggle = useCallback(() => {
+    if (isRecording) {
+      const mr = mediaRecorderRef.current;
+      if (mr && mr.state === "recording") {
+        mr.stop();
+      }
     } else {
-      recognition.start();
+      startRecording();
     }
-  }, [recognition, isListening]);
+  }, [isRecording, startRecording]);
+
+  // Format elapsed into seconds (kept for internal use)
+  // elapsedSeconds intentionally not used in button UI; kept for debugging
 
   return (
     <PromptInputButton
       className={cn(
         "relative transition-all duration-200",
-        isListening && "animate-pulse bg-accent text-accent-foreground",
+        isRecording && "bg-red-600 text-white",
         className
       )}
-      disabled={!recognition}
-      onClick={toggleListening}
+      onClick={() => toggle()}
+      aria-pressed={isRecording}
       {...props}
     >
       <MicIcon className="size-4" />

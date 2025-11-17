@@ -1,6 +1,6 @@
 import "../globals.css";
 import { SidebarProvider } from "../components/ui/sidebar";
-import { ChatSidebar } from "../components/sidebar/chat-sidebar";
+import { ChatSidebar } from "../components/sidebar/sidebar";
 import { getSession } from "@/lib/auth-server";
 import { redirect } from "next/navigation";
 
@@ -16,7 +16,7 @@ export default async function WithSidebarLayout({
   return (
     <SidebarProvider>
       <ChatSidebar />
-      <main className="flex-1 overflow-hidden">
+      <main className="flex-1 overflow-hidden scrollbar-hide">
         {children}
       </main>
     </SidebarProvider>

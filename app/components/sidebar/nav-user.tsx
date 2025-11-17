@@ -1,8 +1,6 @@
 "use client"
 
 import {
-  BellIcon,
-  CreditCardIcon,
   LogOutIcon,
   MoreVerticalIcon,
   UserCircleIcon,
@@ -94,20 +92,10 @@ export function NavUser({
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem onClick={() => router.push('/account')}>
+              <DropdownMenuItem onClick={() => router.push('/Dashboard')}>
                 <UserCircleIcon />
-                Account
+                Dashboard
               </DropdownMenuItem>
-              {/*
-              <DropdownMenuItem onClick={() => router.push('/billing')}>
-                <CreditCardIcon />
-                Billing
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push('/notifications')}>
-                <BellIcon />
-                Notifications
-              </DropdownMenuItem>
-              */}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout}>

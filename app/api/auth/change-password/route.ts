@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
-import * as schema from '@/src/db/schema';
-import { db } from '@/src/db';
+import * as schema from '@/app/db/schema';
+import { db } from '@/app/db';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 

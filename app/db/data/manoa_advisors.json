@@ -1,0 +1,155 @@
+{
+  "School of Architecture": [
+    { "name": "June Lee", "email": "junefl@hawaii.edu", "phone": "808-956-3461" }
+  ],
+
+  "College of Arts, Languages & Letters (CALL)": [
+    { "name": "General Contact", "email": "advising@hawaii.edu", "phone": "808-956-8755" },
+    { "name": "Derek Furukawa", "email": "dtfuruk@hawaii.edu", "phone": "808-956-5938" },
+    { "name": "Tracy Chagami", "email": "chagami@hawaii.edu", "phone": "808-956-4032" },
+    { "name": "Kay Hamada", "email": "kshamada@hawaii.edu", "phone": "808-956-4046" },
+    { "name": "Greg Harris", "email": "greg.harris@hawaii.edu", "phone": "808-956-4041" },
+    { "name": "Alycia Kiyabu", "email": "alyciak@hawaii.edu", "phone": "808-956-4037" }
+  ],
+
+  "Shidler College of Business & School of Travel Industry Management": [
+    { "name": "General Office", "email": "business@hawaii.edu", "phone": "808-956-8215" },
+    { "name": "Clare Fujioka-Sok", "email": "claref@hawaii.edu", "phone": "808-956-8215" },
+    { "name": "Penny Ching", "email": "pennylee@hawaii.edu", "phone": "808-956-8215" },
+    { "name": "Mark Nakamoto", "email": "mark.nakamoto@hawaii.edu", "phone": "808-956-8215" },
+    { "name": "Kaitlin Nalani Tilitile", "email": "tilitile@hawaii.edu", "phone": "808-956-4887" }
+  ],
+
+  "College of Education": [
+    { "name": "Denise Nakaoka", "email": "nakaoka@hawaii.edu", "phone": "808-956-7915" },
+    { "name": "Denise Abara", "email": "dabara@hawaii.edu", "phone": "808-956-7915" },
+    { "name": "Jolene Muneno", "email": "jsmuneno@hawaii.edu", "phone": "808-956-7915" },
+    { "name": "Michelle Tagorda-Kama", "email": "tagordam@hawaii.edu", "phone": "808-956-5371" },
+    { "name": "Courtney Tsumoto", "email": "catsumot@hawaii.edu", "phone": "808-956-6695" }
+  ],
+
+  "College of Engineering": [
+    { "name": "Student Academic Services Office", "email": "engr@eng.hawaii.edu", "phone": "808-956-8404" },
+    { "name": "Jill Nakatsu", "email": "jillkoba@hawaii.edu", "phone": null },
+    { "name": "Todd Ashida", "email": "tashida@hawaii.edu", "phone": null },
+    { "name": "Laura Nakasato", "email": "laurashi@hawaii.edu", "phone": null }
+  ],
+
+  "Hawaiʻinuiākea School of Hawaiian Knowledge": [
+    { "name": "J.T. Pōhaikealoha Bell", "email": "bell7@hawaii.edu", "phone": "808-956-7637" },
+    { "name": "Lehua Nishimura", "email": "lehua.nishimura@hawaii.edu", "phone": "808-956-0642" }
+  ],
+
+  "Honors / RAPS": [
+    { "name": "Siobhán Ní Dhonacha", "email": "dhonacha@hawaii.edu", "phone": "808-956-0756" },
+    { "name": "Ross Peterman", "email": "rossrtp@hawaii.edu", "phone": "808-956-8254" }
+  ],
+
+  "Interdisciplinary Studies": [
+    { "name": "General Office", "email": "isp@hawaii.edu", "phone": "808-956-7297" },
+    { "name": "Elizabeth Gannaway", "email": "gannaway@hawaii.edu", "phone": null }
+  ],
+
+  "Mānoa Advising Center (MAC)": [
+    { "name": "General Office", "email": "macadv@hawaii.edu", "phone": "808-956-7273" },
+    { "name": "Megumi Makino-Kanehiro", "email": null, "phone": null },
+    { "name": "Matt Eng", "email": null, "phone": null },
+    { "name": "Eve Millett", "email": null, "phone": null },
+    { "name": "Andrew Nguyen", "email": null, "phone": null },
+    { "name": "Mark Oxley", "email": null, "phone": null },
+    { "name": "Raezheen Pascua", "email": null, "phone": null },
+    { "name": "Megan Terawaki", "email": null, "phone": null }
+  ],
+
+  "Mānoa Transfer Coordination Center (MTCC)": [
+    { "name": "Lauren Prepose-Forsen", "email": "lprepose@hawaii.edu", "phone": "808-956-5563" },
+    { "name": "Melissa Jones", "email": "sauceda@hawaii.edu", "phone": "808-956-5563" },
+    { "name": "Shauna Sibonga", "email": "shaunaks@hawaii.edu", "phone": "808-956-5563" },
+    { "name": "Jill Sur", "email": "sur@hawaii.edu", "phone": "808-956-5563" }
+  ],
+
+  "John A. Burns School of Medicine (JABSOM)": [
+    { "name": "Yoko Zak", "email": "yokozak@hawaii.edu", "phone": "808-956-8557" }
+  ],
+
+  "College of Natural Sciences": [
+    { "name": "Stephanie Kraft-Terry", "email": "kraft2@hawaii.edu", "phone": "808-956-0735" },
+    { "name": "Irisela Martinez", "email": "irisela@hawaii.edu", "phone": "808-956-0824" },
+    { "name": "Elerose Cordero", "email": "elerose@hawaii.edu", "phone": "808-956-5912" },
+    { "name": "Kamana Seymour", "email": "kamanaok@hawaii.edu", "phone": "808-956-0788" },
+    { "name": "Jordan E. Abanto", "email": "abanto@hawaii.edu", "phone": "808-956-6174" },
+    { "name": "Amanda Ponce", "email": "aponce42@hawaii.edu", "phone": "808-956-8996" },
+    { "name": "Kenny Kaʻaiakamanu-Quibilan", "email": "kennydq@hawaii.edu", "phone": "808-956-6695" },
+    { "name": "Quinn Goo", "email": "qgoo@hawaii.edu", "phone": "808-956-5912" },
+    { "name": "Max Lee", "email": "maxl@hawaii.edu", "phone": "808-956-3365" }
+  ],
+
+  "School of Nursing & Dental Hygiene": [
+    { "name": "Merle Koury", "email": "mkoury@hawaii.edu", "phone": "808-956-6400" },
+    { "name": "Christopher Waiamau", "email": "bsnurs@hawaii.edu", "phone": "808-956-8939" },
+    { "name": "Shane Jackson", "email": "nursden@hawaii.edu", "phone": "808-956-6111" },
+    { "name": "Nancy Ho", "email": "nurswest@hawaii.edu", "phone": "808-956-3269" },
+    { "name": "Jennica Megan Salazar", "email": "ugnurs@hawaii.edu", "phone": "808-956-8452" },
+    { "name": "Kristine Osada", "email": "kmsato@hawaii.edu", "phone": "808-956-8821" },
+    { "name": "Martin Oishi", "email": "oishim@hawaii.edu", "phone": "808-956-5705" },
+    { "name": "Pam Sunahara", "email": "pshimizu@hawaii.edu", "phone": "808-956-5706" }
+  ],
+
+  "School of Ocean & Earth Science & Technology (SOEST)": [
+    { "name": "Heather Saito", "email": "hsaito2@hawaii.edu", "phone": "808-956-8763" }
+  ],
+
+  "Outreach College": [
+    { "name": "General Office", "email": "ocadvise@hawaii.edu", "phone": "808-956-6583" },
+    { "name": "Jodie Kaderli", "email": "jkaderli@hawaii.edu", "phone": "808-956-8581" }
+  ],
+
+  "Pre-Health / Pre-Law (PAC)": [
+    { "name": "Kiana Shiroma", "email": "kianak@hawaii.edu", "phone": "808-956-8646" },
+    { "name": "Daasha Thornton", "email": "daasha@hawaii.edu", "phone": "808-956-8646" }
+  ],
+
+  "College of Social Sciences": [
+    { "name": "Rod Labrador", "email": "labrador@hawaii.edu", "phone": "808-956-0661" },
+    { "name": "Jason Higa", "email": "jthiga@hawaii.edu", "phone": "808-956-0660" },
+    { "name": "Barbara Joyce", "email": "barbaraj@hawaii.edu", "phone": "808-956-8794" },
+    { "name": "Kalei Keolanui", "email": "kkgk2@hawaii.edu", "phone": "808-956-0659" },
+    { "name": "Sunhee Kim Fujii", "email": "sunheeki@hawaii.edu", "phone": "808-956-0665" },
+    { "name": "Keiko Knudson", "email": "knudsonk@hawaii.edu", "phone": "808-956-0662" },
+    { "name": "Marilou Matsuura", "email": "marylou4@hawaii.edu", "phone": "808-956-2417" },
+    { "name": "Nanette Miles", "email": "nmiles@hawaii.edu", "phone": "808-956-7590" },
+    { "name": "Dawn Nishida", "email": "nishidad@hawaii.edu", "phone": "808-956-0658" },
+    { "name": "Jennifer Oshiro", "email": "joshiro@hawaii.edu", "phone": "808-956-0664" },
+    { "name": "AJ Simpao", "email": "ajsimpao@hawaii.edu", "phone": "808-956-0317" },
+    { "name": "Steffanie Sobitz", "email": "ssobitz@hawaii.edu", "phone": "808-956-2136" }
+  ],
+
+  "Thompson School of Social Work & Public Health": [
+    { "name": "Thompson Mike DeMattos", "email": "mdmattos@hawaii.edu", "phone": "808-956-6135" },
+    { "name": "Bailey Holly", "email": "phadvise@hawaii.edu", "phone": "808-956-5753" }
+  ],
+
+  "Student-Athlete Academic Services (SAAS)": [
+    { "name": "Garrett Clanin", "email": "garrettc@hawaii.edu", "phone": "808-956-4526" },
+    { "name": "Kari Ambrozich", "email": "kbanders@hawaii.edu", "phone": "808-956-2441" },
+    { "name": "RJ Ozoa-Aglugub", "email": "rjma@hawaii.edu", "phone": "808-956-2672" },
+    { "name": "Kelsey O'Brien-Robinson", "email": "kelsey42@hawaii.edu", "phone": "808-956-9997" },
+    { "name": "Nicole Sagapolutele", "email": "nicole78@hawaii.edu", "phone": "808-956-6741" },
+    { "name": "Erika Huddle", "email": "ehuddle@hawaii.edu", "phone": "808-956-6697" },
+    { "name": "Aysia Amion", "email": "aysiaa@hawaii.edu", "phone": null }
+  ],
+
+  "TRIO Mānoa": [
+    { "name": "General Office", "email": "trio.manoa@hawaii.edu", "phone": "808-956-8402" },
+    { "name": "Jahanavi Priya", "email": null, "phone": null },
+    { "name": "Jadelynn Zapata", "email": null, "phone": null }
+  ],
+
+  "College of Tropical Agriculture & Human Resilience (CTAHR)": [
+    { "name": "General Office", "email": "ctahradv@hawaii.edu", "phone": null },
+    { "name": "Irene Morrow", "email": "imorrow@hawaii.edu", "phone": "808-956-6163" },
+    { "name": "Maile Sing", "email": "msing@hawaii.edu", "phone": "808-956-2012" },
+    { "name": "Jessica Stenstrom", "email": "jesssten@hawaii.edu", "phone": "808-956-8809" },
+    { "name": "Kayden Iwasaki", "email": "kaydeni@hawaii.edu", "phone": "808-956-6733" }
+  ]
+}
