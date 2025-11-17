@@ -18,7 +18,7 @@
 import { db } from '@/app/db';
 import { profile } from '@/app/db/schema';
 import { eq } from 'drizzle-orm';
-import { testRoadmapGeneration } from '@/lib/roadmap-generator';
+import { generateAndSaveRoadmap } from '@/lib/roadmap-generator';
 
 async function main() {
   const args = process.argv.slice(2);
@@ -52,7 +52,7 @@ async function main() {
   console.log('Existing roadmap cleared.\n');
   
   // Regenerate using the simplified pipeline
-  await testRoadmapGeneration(profileId);
+  await generateAndSaveRoadmap(profileId);
 }
 
 main()
