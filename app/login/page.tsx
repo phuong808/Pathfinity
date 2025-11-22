@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
@@ -8,7 +9,7 @@ import { PasswordRequirements } from '@/app/components/ui/password-requirements'
 import { validatePassword } from '@/lib/utils';
 import { Github } from 'lucide-react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,7 +17,9 @@ export default function LoginPage() {
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [isSignup, setIsSignup] = useState(false);
+  const searchParams = useSearchParams();
+  const initialIsSignup = searchParams?.get('signup') === 'true';
+  const [isSignup, setIsSignup] = useState<boolean>(initialIsSignup ?? false);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isGithubLoading, setIsGithubLoading] = useState(false);
@@ -120,6 +123,26 @@ export default function LoginPage() {
       setError('Failed to sign in with GitHub');
       setIsGithubLoading(false);
     }
+  };
+
+  // Helper to update the UI mode and sync the `signup` query param in the URL.
+  const pathname = usePathname();
+  const setMode = (signup: boolean) => {
+    setIsSignup(signup);
+
+    // Clone existing params so we preserve other query params
+    const newParams = new URLSearchParams(searchParams?.toString() ?? '');
+    if (signup) {
+      newParams.set('signup', 'true');
+    } else {
+      newParams.delete('signup');
+    }
+
+    const qs = newParams.toString();
+    const newUrl = `${pathname}${qs ? `?${qs}` : ''}`;
+
+    // Use replace so toggling doesn't flood the history stack
+    router.replace(newUrl);
   };
 
   return (
@@ -268,7 +291,7 @@ export default function LoginPage() {
           <button
             type="button"
             className="p-0 h-auto font-semibold text-indigo-600 hover:underline"
-            onClick={() => setIsSignup((s) => !s)}
+            onClick={() => setMode(!isSignup)}
           >
             {isSignup ? 'Log in' : 'Sign up'}
           </button>

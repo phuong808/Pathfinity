@@ -98,7 +98,7 @@ export default async function Home() {
               Log in
             </Link>
             <Link 
-              href="/login" 
+              href="/login?signup=true" 
               className="inline-flex items-center px-6 py-2.5 rounded-full bg-black border border-gray-300 text-white text-sm font-medium hover:bg-gray-800 hover:border-gray-400 hover:shadow-lg transition-all duration-200 hover:scale-101"
             >
               Sign up
@@ -239,7 +239,7 @@ export default async function Home() {
               Join hundreds of UH students who are already discovering their path to success with Pathfinity.
             </p>
             <Link 
-              href="/login" 
+              href="/login?signup=true" 
               className="inline-flex items-center justify-center px-10 py-5 rounded-4xl bg-black text-white font-bold text-lg hover:shadow-2xl transition-all duration-200 hover:scale-105 group"
             >
               Get Started
